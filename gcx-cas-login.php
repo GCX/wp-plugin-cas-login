@@ -1,11 +1,11 @@
 <?php
 /**
  * CAS Login (Authentication) Plugin
- * 
+ *
  * Login to WordPress through CAS (Central Authentication Service) using phpCAS.
  * @package GCX_CAS_Login
  * @subpackage Main
- * 
+ *
  * @uses phpCAS 1.2.0+
  */
 
@@ -25,10 +25,10 @@
 /*
  * Copyright (c) 2011, CAMPUS CRUSADE FOR CHRIST
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  *     Redistributions of source code must retain the above copyright notice, this
  *      list of conditions and the following disclaimer.
  *     Redistributions in binary form must reproduce the above copyright notice,
@@ -37,7 +37,7 @@
  *     Neither the name of CAMPUS CRUSADE FOR CHRIST nor the names of its
  *      contributors may be used to endorse or promote products derived from this
  *      software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -51,23 +51,18 @@
  */
 ?>
 <?php
-require_once 'Log.php';
-global $logger;
-$logger = Log::factory('file', ini_get('error_log'), substr(strtoupper(md5(microtime())), 0, 5));
-?>
-<?php
 
 //if phpCAS in not loaded, attempt to include it
 //from the include path, otherwise load the included phpCAS
 if(!class_exists('CAS_Client')) {
 	@include_once 'CAS.php';
 	if(!class_exists('CAS_Client'))
-		@include_once rtrim(dirname(realpath(__FILE__)), DIRECTORY_SEPARATOR) . '/lib/phpCAS/CAS.php';
+		@include_once rtrim(dirname(realpath(__FILE__)), DIRECTORY_SEPARATOR) . '/lib/phpCAS/source/CAS.php';
 }
 
 /**
  * Implements CAS Authentication for wordpress logins
- * 
+ *
  * @author Brian Zoetewey <brian.zoetewey@ccci.org>
  */
 class GCX_CAS_Login {
@@ -79,7 +74,7 @@ class GCX_CAS_Login {
 	 * @var GCX_CAS_Login
 	 */
 	private static $instance;
-	
+
 	/**
 	* Returns the GCX_CAS_Login singleton
 	* @code $gcx_cas = GCX_CAS_Login::singleton();
@@ -92,12 +87,12 @@ class GCX_CAS_Login {
 		}
 		return self::$instance;
 	}
-	
+
 	/**
 	* Prevent cloning of the GCX_CAS_Login object
 	*/
 	private function __clone() {}
-	
+
 /*###########################################
 #   Constants
 ##########################################*/
@@ -106,35 +101,35 @@ class GCX_CAS_Login {
 	 * @var string
 	 */
 	const LIB_DIR_NAME = 'lib';
-	
+
 	/**
 	 * Name of the api directory.
 	 * Change this if you rename the api directory.
 	 * @var string
 	 */
 	const API_DIR_NAME = 'api';
-	
+
 	/**
 	 * CAS proxy mode
 	 * @var string
 	 */
 	const PROXY = 'proxy';
-	
+
 	/**
 	 * CAS client mode
 	 * @var string
 	 */
 	const CLIENT = 'client';
-	
+
 	/**
 	 * CAS PGT file storage
 	 * @var string
 	 */
 	const FILE = 'file';
-	
+
 	/**
 	 * Configuration name
-	 * 
+	 *
 	 * Name used for storing and retrieving config from the wordpress site options.
 	 * @var string
 	 */
@@ -146,24 +141,24 @@ class GCX_CAS_Login {
 	 * @var string
 	 */
 	public $base_dir;
-	
+
 	/**
 	 * Base uri of this plugin
-	 * 
+	 *
 	 * Absolute url for this plugin
 	 * @var string
 	 */
 	public $base_uri_abs;
-	
+
 	/**
 	 * Base relative uri
-	 * 
+	 *
 	 * This is the relative path to this plugin. Use with
 	 * site_url() or home_url() to create an absolute url.
 	 * @var string
 	 */
 	public $base_uri_rel;
-	
+
 	/**
 	 * Library directory path
 	 * @var string
@@ -180,23 +175,23 @@ class GCX_CAS_Login {
 		'uri'         => 'cas',
 		'mode'        => self::CLIENT,
 	);
-	
+
 	/**
 	 * The CAS Client object
 	 * @var CAS_Client
 	 */
 	private $_cas_client;
-	
+
 	/**
 	 * GCX_CAS_Login class constructor
-	 * 
+	 *
 	 * Do not instantiate this class, instead use the singleton object.
 	 * @code $gcx_cas = GCX_CAS_Login::singleton();
 	 */
 	private function __construct() {
 		$this->base_dir = rtrim(dirname(realpath(__FILE__)), DIRECTORY_SEPARATOR);
 		$this->lib_dir = $this->base_dir . DIRECTORY_SEPARATOR . self::LIB_DIR_NAME;
-		
+
 		//Build the base relative uri by searching backwards until we encounter the wordpress ABSPATH
 		$root = array_pop(explode(DIRECTORY_SEPARATOR, rtrim(ABSPATH, DIRECTORY_SEPARATOR)));
 		$path_parts = explode(DIRECTORY_SEPARATOR, $this->base_dir);
@@ -211,17 +206,17 @@ class GCX_CAS_Login {
 
 		$this->register_actions();
 	}
-	
+
 	/**
 	 * Initializes phpCAS
-	 * 
+	 *
 	 * @access private
 	 */
 	public function initialize_phpcas() {
 		$config = $this->get_config();
-		
+
 //		phpCAS::setDebug(implode('/', array($this->base_dir, 'cas.log')));
-		
+
 		//Create a CAS Client object
 		$this->_cas_client = new CAS_Client(
 			'2.0',
@@ -230,7 +225,7 @@ class GCX_CAS_Login {
 			(int) $config->port,
 			$config->uri
 		);
-		
+
 		//Disable SSL server validation.
 		//Validation usually fails unless reverse hostname lookup works correctly for the CAS server.
 		$this->_cas_client->setNoCasServerValidation();
@@ -239,28 +234,28 @@ class GCX_CAS_Login {
 		//(breaks because hostname reverse lookup does not resolve to our CAS server)
 		$this->_cas_client->handleLogoutRequests(false);
 	}
-	
-	
+
+
 	/**
 	 * Register WordPress actions and filters
 	 */
 	private function register_actions() {
 		add_action('plugins_loaded', array(&$this, 'initialize_phpcas'), 0, 0);
 		add_action('switch_blog', array(&$this, 'update_uris'), 0, 0);
-		
+
 		//Authentication hooks
 		add_filter('authenticate', array(&$this, 'authenticate'), 10, 3);
 		add_filter('login_url', array(&$this, 'remove_reauth_param'));
 		add_action('check_passwords', array(&$this, 'check_passwords'), 10, 3);
 		add_action('wp_logout', array(&$this, 'logout'));
-		
+
 		add_action('init', array(&$this, 'force_login'), 0, 0);
-		
+
 		add_filter('show_password_fields', '__return_false'); //Disable password change
 		add_filter('allow_password_reset', '__return_false'); //Disable password change
 	}
-	
-	
+
+
 	/**
 	 * Force Authentication
 	 */
@@ -277,20 +272,25 @@ class GCX_CAS_Login {
 			case 'xmlrpc.php':
 				return;
 		}
+
+		$bypass = apply_filters( 'bypass_cas_login', false );
+		if( true === $bypass )
+			return;
+
 		if(!is_user_logged_in()) {
 			auth_redirect();
 		}
 	}
-	
+
 	/**
 	 * Updates the uris when the blog is switched.
-	 * 
+	 *
 	 * @see switch_blog
 	 */
 	public function update_uris() {
 		$this->base_uri_abs = get_site_url(null, $this->base_uri_rel);
 	}
-	
+
 	/**
 	 * Get the CAS configuration
 	 * @return object
@@ -298,7 +298,7 @@ class GCX_CAS_Login {
 	public function get_config() {
 		return (object) wp_parse_args(get_site_option(self::CONFIG_NAME, array()), $this->config_defaults);
 	}
-	
+
 	/**
 	 * Returns the uri to use for CAS PGT callbacks
 	 * @return string
@@ -306,8 +306,8 @@ class GCX_CAS_Login {
 	public function get_callback_uri() {
 		return implode('/', array($this->base_uri_abs, self::API_DIR_NAME, self::CALLBACK_FILENAME));
 	}
-	
-	
+
+
 	/**
 	 * Get the CAS_Client object
 	 * @return CAS_Client
@@ -315,17 +315,17 @@ class GCX_CAS_Login {
 	public function get_cas_client() {
 		return $this->_cas_client;
 	}
-	
+
 	/**
 	* Authenticates user through phpCAS, if user is not in the system, they get added.
 	* callback for 'authenticate' wordpress action
 	*/
 	function authenticate() {
 		global $wpdb;
-		
+
 		//Redirect to CAS if User is not already signed in.
 		$this->_cas_client->forceAuthentication();
-	
+
 		//get users GUID from cas:attributes
 		$casAttributes = (array) $this->_cas_client->getAttributes();
 		if(is_array($casAttributes)) {
@@ -342,7 +342,7 @@ class GCX_CAS_Login {
 
 		//get users email address from cas login name
 		$email = $this->_cas_client->getUser();
-		
+
 		//Find user by GUID first
 		if($user = $this->get_user_by_guid($guid)) {
 			$userdata = get_userdata($user->ID);
@@ -407,34 +407,34 @@ class GCX_CAS_Login {
 				$userdata['user_nicename'] = $display;
 				$userdata['display_name'] = $display;
 			}
-				
+
 			//Switch to the primary blog when adding new users, this prevents the
 			//user from being added to whatever blog might currently be running.
 //			switch_to_blog((int)get_site_option('dashboard_blog', 1));
-				
+
 			//Add the new user
 			$id = wp_insert_user($userdata);
-				
+
 			//Switch back to the running blog
 //			restore_current_blog();
-				
+
 			if(is_wp_error($id)) return $id;
 			$user = new WP_User($id);
-				
+
 			//add the GUID meta data
 			update_user_meta($user->ID, 'guid', $guid);
-				
+
 			add_user_to_blog(get_current_blog_id(), $user->ID, 'subscriber');
 		}
-	
+
 		if($user instanceof WP_User) {
 			do_action('wpgcx_user_logged_in', $user->ID, $guid);
 			return $user;
 		}
 		return false;
 	}
-	
-	
+
+
 	/**
 	* Removes the reauth parameter from login urls, fixes an issue where
 	* users are redirected back to wp-login after they have authenticated with CAS
@@ -446,7 +446,7 @@ class GCX_CAS_Login {
 		$login_url = remove_query_arg('reauth', $login_url);
 		return $login_url;
 	}
-	
+
 	/**
 	* Generates dummy password. Needed to create a user.
 	* callback for 'check_passwords' wordpress action
@@ -454,7 +454,7 @@ class GCX_CAS_Login {
 	function check_passwords($username, $password1, $password2) {
 		$password1 = $password2 = wp_generate_password();
 	}
-	
+
 	/**
 	* Wordpress logout hook, called after current user has logged out of wordpress.
 	* This function will also log the user out of CAS if they are currently authenticated.
@@ -465,8 +465,8 @@ class GCX_CAS_Login {
 			$this->_cas_client->logout(array());
 		}
 	}
-	
-	
+
+
 	/**
 	* Returns the current users GUID or GUEST if it is the guest user or they don't have a GUID set yet.
 	* @return string guid or GUEST
@@ -474,7 +474,7 @@ class GCX_CAS_Login {
 	public function get_current_user_guid() {
 		return $this->get_user_guid(wp_get_current_user());
 	}
-	
+
 	/**
 	 * Returns the guid for the specified user object
 	 * @return guid string
@@ -488,11 +488,11 @@ class GCX_CAS_Login {
 				return $guid;
 			}
 		}
-	
+
 		// Default to the GUEST guid if a guid couldn't be found
 		return 'GUEST';
 	}
-	
+
 	/**
 	 * Returns a WP_User object for the user matching the guid or null
 	 * @param string $guid
@@ -504,8 +504,8 @@ class GCX_CAS_Login {
 		}
 		return null;
 	}
-	
-	
+
+
 	/**
 	* Returns a user id for a user matching the meta information
 	* @param string $meta_key
@@ -542,7 +542,7 @@ function wp_validate_auth_cookie($cookie = '', $scheme = '') {
 		session_id($_COOKIE[$cookie]);
 		session_start();
 	}
-	
+
 	$cas_client = GCX_CAS_Login::singleton()->get_cas_client();
 
 	// check to see if the user has authenticated with CAS yet
